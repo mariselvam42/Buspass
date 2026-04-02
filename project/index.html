@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bus Pass Management System</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+<style>
+body {
+  background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)),
+              url('https://images.unsplash.com/photo-1503376780353-7e6692767b70');
+  background-size: cover;
+  background-position: center;
+  color: white;
+}
+
+.navbar { backdrop-filter: blur(10px); }
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(15px);
+  border-radius: 20px;
+  padding: 20px;
+}
+
+.center-box {
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.status-approved { color: lightgreen; }
+.status-rejected { color: red; }
+.status-pending { color: orange; }
+</style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar navbar-dark bg-dark fixed-top">
+  <div class="container-fluid">
+    <a class="navbar-brand">🚌 Bus Pass</a>
+    <div>
+      <button class="btn btn-outline-light" onclick="showPage('home')">Home</button>
+      <button class="btn btn-outline-light" onclick="showPage('login')">Login</button>
+      <button class="btn btn-outline-light" onclick="showPage('register')">Register</button>
+      <button class="btn btn-outline-light" onclick="showMyPass()">My Pass</button>
+      <button class="btn btn-danger" onclick="logout()">Logout</button>
+    </div>
+  </div>
+</nav>
+
+<!-- HOME -->
+<div id="home" class="center-box">
+  <div class="glass-card text-center">
+    <h1>Welcome</h1>
+    <button class="btn btn-primary" onclick="showPage('login')">Start</button>
+  </div>
+</div>
+
+<!-- LOGIN -->
+<div id="login" class="center-box" style="display:none;">
+  <div class="glass-card">
+    <h3>Login</h3>
+    <input type="email" id="loginEmail" class="form-control mb-2" placeholder="Email">
+    <input type="password" id="loginPassword" class="form-control mb-2" placeholder="Password">
+    <button class="btn btn-success w-100" onclick="login()">Login</button>
+  </div>
+</div>
+
+<!-- REGISTER -->
+<div id="register" class="center-box" style="display:none;">
+  <div class="glass-card">
+    <h3>Register</h3>
+    <input id="name" class="form-control mb-2" placeholder="Name">
+    <input id="email" class="form-control mb-2" placeholder="Email">
+    <input id="password" class="form-control mb-2" placeholder="Password">
+    <input type="date" id="dob" class="form-control mb-2">
+    <button class="btn btn-primary w-100" onclick="register()">Register</button>
+  </div>
+</div>
+
+<!-- USER DASHBOARD -->
+<div id="dashboard" class="container" style="display:none; margin-top:100px;">
+  <div class="glass-card">
+    <h3>Book Pass</h3>
+    <select id="from" class="form-control mb-2">
+      <option>Chennai</option>
+      <option>Madurai</option>
+    </select>
+    <select id="to" class="form-control mb-2">
+      <option>Salem</option>
+      <option>Trichy</option>
+    </select>
+    <input type="date" id="date" class="form-control mb-2">
+    <button class="btn btn-warning w-100" onclick="bookPass()">Book</button>
+  </div>
+</div>
+
+<!-- MY PASS -->
+<div id="mypasses" class="container" style="display:none; margin-top:100px;">
+  <div class="glass-card">
+    <h3>My Pass</h3>
+    <table class="table text-white">
+      <tbody id="passTable"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ADMIN PANEL -->
+<div id="adminPage" class="container" style="display:none; margin-top:100px;">
+  <div class="glass-card">
+    <h3>Admin Panel</h3>
+    <table class="table text-white">
+      <thead>
+        <tr>
+          <th>User</th><th>From</th><th>To</th><th>Date</th><th>Status</th><th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="adminTable"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const BASE_URL = "http://localhost:8080/api";
+
+function hideAll(){
+ ['home','login','register','dashboard','mypasses','adminPage'].forEach(id=>{
+  document.getElementById(id).style.display='none';
+ });
+}
+
+function showPage(p){ hideAll(); document.getElementById(p).style.display='flex'; }
+
+function logout(){ localStorage.clear(); showPage('home'); }
+
+async function register(){
+ await fetch(BASE_URL+"/auth/register",{
+  method:"POST",headers:{"Content-Type":"application/json"},
+  body:JSON.stringify({name:name.value,email:email.value,password:password.value,dob:dob.value})
+ });
+ alert("Registered"); showPage('login');
+}
+
+async function login(){
+ const res=await fetch(BASE_URL+"/auth/login",{
+  method:"POST",headers:{"Content-Type":"application/json"},
+  body:JSON.stringify({email:loginEmail.value,password:loginPassword.value})
+ });
+
+ const user=await res.json();
+ localStorage.setItem("user",JSON.stringify(user));
+
+ if(user.role==="ADMIN"){
+   hideAll();
+   document.getElementById('adminPage').style.display='block';
+   loadAdmin();
+ }else{
+   hideAll();
+   document.getElementById('dashboard').style.display='block';
+ }
+}
+
+async function bookPass(){
+ const user=JSON.parse(localStorage.getItem("user"));
+ await fetch(BASE_URL+"/pass/book",{
+  method:"POST",headers:{"Content-Type":"application/json"},
+  body:JSON.stringify({fromLocation:from.value,toLocation:to.value,travelDate:date.value,userId:user.id})
+ });
+ alert("Booked");
+}
+
+async function showMyPass(){
+ hideAll();
+ document.getElementById('mypasses').style.display='block';
+ const user=JSON.parse(localStorage.getItem("user"));
+ const res=await fetch(BASE_URL+"/pass/user/"+user.id);
+ const data=await res.json();
+
+ passTable.innerHTML=data.map(p=>{
+   let cls = p.status==='APPROVED'?'status-approved':p.status==='REJECTED'?'status-rejected':'status-pending';
+   return `<tr>
+   <td>${p.fromLocation}</td>
+   <td>${p.toLocation}</td>
+   <td>${p.travelDate}</td>
+   <td class="${cls}">${p.status}</td>
+   </tr>`;
+ }).join('');
+}
+
+async function loadAdmin(){
+ const res=await fetch(BASE_URL+"/admin/all");
+ const data=await res.json();
+
+ adminTable.innerHTML=data.map(p=>{
+   let disabled = p.status !== 'PENDING' ? 'disabled' : '';
+   let cls = p.status==='APPROVED'?'status-approved':p.status==='REJECTED'?'status-rejected':'status-pending';
+
+   return `<tr>
+   <td>${p.userId}</td>
+   <td>${p.fromLocation}</td>
+   <td>${p.toLocation}</td>
+   <td>${p.travelDate}</td>
+   <td class="${cls}">${p.status}</td>
+   <td>
+     <button onclick="approve(${p.id}, this)" class="btn btn-success btn-sm" ${disabled}>✔</button>
+     <button onclick="reject(${p.id}, this)" class="btn btn-danger btn-sm" ${disabled}>✖</button>
+   </td>
+   </tr>`;
+ }).join('');
+}
+
+async function approve(id, btn){
+ await fetch(BASE_URL+"/admin/approve/"+id,{method:"POST"});
+ btn.disabled = true;
+ btn.nextElementSibling.disabled = true;
+ alert("Approved");
+}
+
+async function reject(id, btn){
+ await fetch(BASE_URL+"/admin/reject/"+id,{method:"POST"});
+ btn.disabled = true;
+ btn.previousElementSibling.disabled = true;
+ alert("Rejected");
+}
+</script>
+
+</body>
+</html>
